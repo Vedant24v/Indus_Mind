@@ -1,85 +1,148 @@
-# IndusMind — Industrial RAG Document Q&A System
+# IndusMind 🛠️ — Industrial RAG Document Q&A System
 
-IndusMind is a Retrieval-Augmented Generation (RAG) powered web application designed to help engineers and operators query complex industrial manuals, standard operating procedures (SOPs), and equipment datasheets. 
+IndusMind is a premium, high-performance Retrieval-Augmented Generation (RAG) web application designed for engineers, technicians, and operators to interactively query complex industrial manuals, datasheets, and Standard Operating Procedures (SOPs). 
 
-The application is deployed as a **full-stack monorepo on Vercel** (with React on the frontend and FastAPI on Python Serverless Functions in the backend), integrated with Qdrant Cloud (vector storage) and Groq Cloud (Llama 3.1 LLM inference).
-
-## Tech Stack
-
-- **Frontend**: React 18 + Vite + Tailwind CSS
-- **Backend**: Python, FastAPI, native `qdrant-client`
-- **Embeddings**: Hugging Face Serverless Inference API (`sentence-transformers/all-MiniLM-L6-v2`)
-- **LLM**: Groq Cloud (Llama 3.1 8B)
-- **Vector DB**: Qdrant Cloud
-- **Deployment**: Vercel (unified hosting)
+It is engineered as a **full-stack monorepo hosted on Vercel**—bundling a sleek, modern React frontend with a serverless Python FastAPI backend. The vector search is powered by Qdrant Cloud, text embeddings are processed on-demand using Hugging Face Serverless Inference, and Q&A reasoning is generated using Groq Cloud's ultra-fast Llama-3.1-8b LLM.
 
 ---
 
-## Local Setup
+## Key Features
+
+- **Unified PDF Ingestion**: Upload industrial manuals or datasheets directly via the left-side ingestion panel or the chat bar's attachment button.
+- **Ultra-Lightweight Serverless Backend**: Built without heavy local ML runtimes (no PyTorch, ONNX, or local sentence-transformers) to comply with Vercel's serverless package size limits (<10MB zipped).
+- **Interactive Retrieval-Augmented Q&A**: Uses state-of-the-art similarity search via Qdrant's modern `query_points` API to retrieve contextual chunks, passing them to Groq's Llama 3.1 for high-accuracy answers with direct source citations.
+- **Premium Industrial UI**: Designed with a high-fidelity obsidian/zinc monochrome theme, featuring smooth micro-animations, glassmorphic layout elements, and dynamic animated SVG gradient-tracing lines.
+
+---
+
+## Architecture & Data Flow
+
+```mermaid
+graph TD
+    A[User Uploads PDF] -->|Base64 JSON Payload| B[FastAPI Backend /api/upload]
+    B -->|pypdf.PdfReader| C[Text Extraction & Chunking]
+    C -->|MiniLM-L6-v2 API| D[Hugging Face Inference]
+    D -->|384d Vectors| E[Qdrant Cloud Vector DB]
+    
+    F[User Asks Question] -->|POST /api/query| G[FastAPI Backend /api/query]
+    G -->|MiniLM-L6-v2 API| H[Hugging Face Inference]
+    H -->|Query Vector| I[Qdrant query_points Similarity Search]
+    I -->|Retrieved Context| J[Groq Cloud LLM Llama-3.1]
+    J -->|Answer + Citations| K[User Chat Interface]
+```
+
+---
+
+## Tech Stack
+
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | React 18 + Vite | Modern, fast bundler and component UI |
+| **Styling** | Tailwind CSS + Lucide Icons | Responsive utility-first design framework |
+| **Backend** | FastAPI (Python 3.12) | Asynchronous REST API serverless endpoints |
+| **Embeddings** | Hugging Face API | `sentence-transformers/all-MiniLM-L6-v2` |
+| **LLM Inference** | Groq Cloud | `llama-3.1-8b-instant` for near-instant responses |
+| **Vector DB** | Qdrant Cloud | Remote managed vector database |
+| **Deployment** | Vercel | Monorepo deployment (Vite + Python Serverless Functions) |
+
+---
+
+## Getting Started
 
 ### Prerequisites
 - Node.js (v18+)
 - Python (v3.10+)
-- Qdrant Cloud account & cluster (free tier)
-- Groq Cloud API Key
-- Hugging Face API Token (free tier)
-
-### Backend Configuration
-1. Clone the repository and navigate to the directory.
-2. Create a Python virtual environment:
-   ```bash
-   python -m venv .venv
-   ```
-3. Activate the virtual environment:
-   - **Windows (PowerShell)**: `.\.venv\Scripts\Activate.ps1`
-   - **macOS / Linux**: `source .venv/bin/activate`
-4. Install backend dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-5. Create a `.env` file in the root directory with the following variables:
-   ```env
-   GROQ_API_KEY=your_groq_api_key
-   QDRANT_URL=your_qdrant_cluster_url
-   QDRANT_API_KEY=your_qdrant_api_key
-   HUGGINGFACE_API_KEY=your_huggingface_api_token
-   FRONTEND_URL=http://localhost:5173
-   ```
-6. Run the local backend server:
-   ```bash
-   uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-   ```
-
-### Frontend Configuration
-1. Install node dependencies:
-   ```bash
-   npm install
-   ```
-2. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-3. Open [http://localhost:5173](http://localhost:5173) in your browser. *(Requests to `/api/*` are automatically routed to the local backend during development).*
+- Accounts: [Groq Console](https://console.groq.com/), [Qdrant Cloud](https://cloud.qdrant.io/), [Hugging Face](https://huggingface.co/)
 
 ---
 
-## Deployment to Vercel (Full-Stack Monorepo)
+### Local Development Setup
 
-Vercel hosts the React frontend and compiles the Python serverless functions (located in the `api/` directory) in a single deployment.
+#### 1. Configure Backend Functions
+Navigate to the root directory and set up the Python environment:
+```bash
+# Create and activate virtual environment
+python -m venv .venv
+# On Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
 
-### 1. Vector Database Setup (Qdrant Cloud)
-1. Sign up at [cloud.qdrant.io](https://cloud.qdrant.io) (free tier).
-2. Create a free cluster, copy the **Cluster URL** and create/copy an **API Key**.
+# Install dependencies
+pip install -r requirements.txt
+```
 
-### 2. Hugging Face Access Token
-1. Generate a free API token (with standard Read permissions) at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+Create a `.env` file in the root directory:
+```env
+GROQ_API_KEY=gsk_...
+QDRANT_URL=https://...aws.cloud.qdrant.io
+QDRANT_API_KEY=your_qdrant_api_key
+HUGGINGFACE_API_KEY=hf_...
+FRONTEND_URL=http://localhost:5173
+```
 
-### 3. Deploying to Vercel
-1. Push the code repository to GitHub.
-2. Link your GitHub repository in your Vercel Dashboard.
-3. In Vercel Project Settings, add the following **Environment Variables**:
-   - `GROQ_API_KEY` (Your Groq API key)
-   - `QDRANT_URL` (Your Qdrant cluster URL)
-   - `QDRANT_API_KEY` (Your Qdrant API key)
-   - `HUGGINGFACE_API_KEY` (Your Hugging Face API token)
-4. Deploy the project. Vercel compiles the Vite frontend and deploys the backend Python routes at `/api/upload` and `/api/query` automatically.
+Run the local development backend server:
+```bash
+python main.py
+```
+*The backend runs at `http://localhost:8000` with hot-reloading enabled.*
+
+#### 2. Run Frontend Dev Server
+Open a new terminal window:
+```bash
+# Install node packages
+npm install
+
+# Run Vite development server
+npm run dev
+```
+*The frontend runs at `http://localhost:5173`. Frontend requests targeting `/api/*` are automatically proxied to `http://localhost:8000` during local development.*
+
+---
+
+## Production Deployment (Vercel)
+
+This project is configured out-of-the-box for zero-config Vercel monorepo deployment via [vercel.json](file:///e:/Projects/RAG%20Industrial%20Document%20Q&A/vercel.json).
+
+### 1. Set Up Environment Variables
+Log in to your Vercel Dashboard, navigate to your Project Settings -> **Environment Variables**, and configure:
+* `GROQ_API_KEY`: Your Groq Cloud completion API key.
+* `QDRANT_URL`: Your Qdrant Cloud cluster endpoint.
+* `QDRANT_API_KEY`: Your Qdrant Cloud API authorization token.
+* `HUGGINGFACE_API_KEY`: Your Hugging Face serverless Read token.
+
+*Do NOT add `VITE_API_URL` when deploying frontend and backend together on Vercel. Leaving it undefined allows the frontend to default to relative path routing `/api/*` on the same domain, preventing CORS issues.*
+
+### 2. Deploy to Production
+Install the Vercel CLI and run:
+```bash
+npx vercel --prod --force --yes
+```
+
+---
+
+## Project Structure
+
+```text
+├── api/
+│   └── index.py            # Vercel Serverless Function entry point
+├── routes/
+│   ├── upload.py           # Ingestion router (PDF parsing, embedding generation, Qdrant indexing)
+│   └── query.py            # Query router (semantic search context lookup, Groq LLM completion)
+├── src/
+│   ├── components/
+│   │   ├── ChatPanel.jsx   # Interactive chat interface & paperclip upload trigger
+│   │   ├── UploadPanel.jsx # Left sidebar upload state with percentage tracker
+│   │   └── ui/             # Reusable animated UI elements
+│   ├── App.jsx             # Root layout & global states
+│   ├── api.js              # Axios-based API client with Base64 payload converters
+│   └── index.css           # Global custom classes & resets
+├── vercel.json             # Vercel deployment & routing configuration
+├── requirements.txt        # Serverless backend python dependencies
+└── package.json            # Frontend node scripts & dependencies
+```
+
+---
+
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
