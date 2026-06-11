@@ -78,13 +78,13 @@ async def query_document(request: QueryRequest):
         query_vector = get_huggingface_embeddings([request.question])[0]
         
         # Search Qdrant
-        search_result = client.search(
+        search_result = client.query_points(
             collection_name=request.doc_id,
-            query_vector=query_vector,
+            query=query_vector,
             limit=4
         )
         
-        retrieved_texts = [hit.payload["page_content"] for hit in search_result]
+        retrieved_texts = [point.payload["page_content"] for point in search_result.points]
         
         if not retrieved_texts:
             return {
