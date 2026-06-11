@@ -1,13 +1,24 @@
 import os
 import re
 import tempfile
-import requests
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pypdf import PdfReader
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
+from fastembed import TextEmbedding
 
 router = APIRouter()
+
+# Get the path to fastembed_cache relative to this routes folder
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(current_dir)
+cache_dir = os.path.join(root_dir, "fastembed_cache")
+
+# Initialize embedding model locally from bundled cache
+embedding_model = TextEmbedding(
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    cache_dir=cache_dir
+)
 
 def sanitize_collection_name(filename: str) -> str:
     name, _ = os.path.splitext(filename)
@@ -29,22 +40,6 @@ def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> lis
         chunks.append(text[start:end].strip())
         start = end - chunk_overlap
     return chunks
-
-def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
-    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
-    headers = {}
-    hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
-    if hf_token:
-        headers["Authorization"] = f"Bearer {hf_token}"
-        
-    response = requests.post(
-        api_url,
-        headers=headers,
-        json={"inputs": texts, "options": {"wait_for_model": True}}
-    )
-    if response.status_code != 200:
-        raise Exception(f"HuggingFace embedding failed: {response.text}")
-    return response.json()
 
 @router.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -75,14 +70,9 @@ async def upload_pdf(file: UploadFile = File(...)):
             
         chunks = split_text(text, chunk_size=500, chunk_overlap=50)
         
-        # Hugging Face serverless inference API limits request size.
-        # We should embed in batches of e.g. 32 chunks to avoid size limits or time outs.
-        vectors = []
-        batch_size = 32
-        for i in range(0, len(chunks), batch_size):
-            batch_chunks = chunks[i:i+batch_size]
-            batch_vectors = get_huggingface_embeddings(batch_chunks)
-            vectors.extend(batch_vectors)
+        # Run local embeddings generation via fastembed
+        vectors_gen = embedding_model.embed(chunks)
+        vectors = [v.tolist() for v in vectors_gen]
             
         qdrant_url = os.getenv("QDRANT_URL")
         qdrant_api_key = os.getenv("QDRANT_API_KEY")

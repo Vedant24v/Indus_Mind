@@ -3,6 +3,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
+from fastembed import TextEmbedding
 
 router = APIRouter()
 
@@ -10,21 +11,16 @@ class QueryRequest(BaseModel):
     question: str
     doc_id: str
 
-def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
-    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
-    headers = {}
-    hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
-    if hf_token:
-        headers["Authorization"] = f"Bearer {hf_token}"
-        
-    response = requests.post(
-        api_url,
-        headers=headers,
-        json={"inputs": texts, "options": {"wait_for_model": True}}
-    )
-    if response.status_code != 200:
-        raise Exception(f"HuggingFace embedding failed: {response.text}")
-    return response.json()
+# Get the path to fastembed_cache relative to this routes folder
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(current_dir)
+cache_dir = os.path.join(root_dir, "fastembed_cache")
+
+# Initialize embedding model locally from bundled cache
+embedding_model = TextEmbedding(
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    cache_dir=cache_dir
+)
 
 def call_groq(prompt: str, groq_api_key: str) -> str:
     headers = {
@@ -66,8 +62,9 @@ async def query_document(request: QueryRequest):
         except Exception:
             raise HTTPException(status_code=404, detail="Document index not found. Please upload the document again.")
         
-        # Get query embedding
-        query_vector = get_huggingface_embeddings([request.question])[0]
+        # Generate query embedding locally
+        query_vector_gen = embedding_model.embed([request.question])
+        query_vector = list(query_vector_gen)[0].tolist()
         
         # Search Qdrant
         search_result = client.search(
