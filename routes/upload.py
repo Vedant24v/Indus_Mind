@@ -1,13 +1,19 @@
 import os
 import re
 import tempfile
+import base64
 import requests
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from pypdf import PdfReader
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 router = APIRouter()
+
+class UploadRequest(BaseModel):
+    file_name: str
+    file_data: str  # Base64 encoded string
 
 def sanitize_collection_name(filename: str) -> str:
     name, _ = os.path.splitext(filename)
@@ -37,7 +43,7 @@ def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
             status_code=500,
             detail="HUGGINGFACE_API_KEY environment variable is missing. "
                    "Please generate a free API token at https://huggingface.co/settings/tokens "
-                   "and add it to your environment variables (Vercel Dashboard & local .env)."
+                   "and add it to your environment variables."
         )
         
     api_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
@@ -55,23 +61,26 @@ def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
     return response.json()
 
 @router.post("/api/upload")
-async def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith('.pdf'):
+async def upload_pdf(request: UploadRequest):
+    if not request.file_name.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
     
+    try:
+        # Decode base64 contents
+        contents = base64.b64decode(request.file_data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 file data.")
+        
     MAX_SIZE = 10 * 1024 * 1024
-    contents = await file.read(MAX_SIZE + 1)
     if len(contents) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="File size exceeds the 10MB limit.")
     
-    await file.seek(0)
-    
     temp_dir = tempfile.gettempdir()
-    temp_file_path = os.path.join(temp_dir, file.filename)
+    temp_file_path = os.path.join(temp_dir, request.file_name)
     
     try:
         with open(temp_file_path, "wb") as f:
-            f.write(contents[:MAX_SIZE])
+            f.write(contents)
         
         reader = PdfReader(temp_file_path)
         text = ""
@@ -98,7 +107,7 @@ async def upload_pdf(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail="Qdrant environment variables must be set.")
             
         client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-        collection_name = sanitize_collection_name(file.filename)
+        collection_name = sanitize_collection_name(request.file_name)
         
         try:
             client.delete_collection(collection_name)
