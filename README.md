@@ -4,6 +4,7 @@ IndusMind is a premium, high-performance Retrieval-Augmented Generation (RAG) we
 
 It is engineered as a **full-stack monorepo hosted on Vercel**—bundling a sleek, modern React frontend with a serverless Python FastAPI backend. The vector search is powered by Qdrant Cloud, text embeddings are processed on-demand using Hugging Face Serverless Inference, and Q&A reasoning is generated using Groq Cloud's ultra-fast Llama-3.1-8b LLM.
 
+LIVE: https://indusmind.vercel.app/
 ---
 
 ## Key Features
