@@ -3,6 +3,5 @@ uvicorn
 python-multipart
 qdrant-client
 pypdf
-fastembed
 requests
 python-dotenv

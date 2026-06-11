@@ -1,21 +1,13 @@
 import os
 import re
 import tempfile
+import requests
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pypdf import PdfReader
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from fastembed import TextEmbedding
 
 router = APIRouter()
-
-cache_dir = "/tmp/fastembed_cache"
-
-# Initialize embedding model locally in Vercel's /tmp directory
-embedding_model = TextEmbedding(
-    model_name="sentence-transformers/all-MiniLM-L6-v2",
-    cache_dir=cache_dir
-)
 
 def sanitize_collection_name(filename: str) -> str:
     name, _ = os.path.splitext(filename)
@@ -37,6 +29,30 @@ def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> lis
         chunks.append(text[start:end].strip())
         start = end - chunk_overlap
     return chunks
+
+def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
+    hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
+    if not hf_token:
+        raise HTTPException(
+            status_code=500,
+            detail="HUGGINGFACE_API_KEY environment variable is missing. "
+                   "Please generate a free API token at https://huggingface.co/settings/tokens "
+                   "and add it to your environment variables (Vercel Dashboard & local .env)."
+        )
+        
+    api_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    
+    response = requests.post(
+        api_url,
+        headers=headers,
+        json={"inputs": texts, "options": {"wait_for_model": True}}
+    )
+    
+    if response.status_code != 200:
+        raise Exception(f"HuggingFace embedding failed (HTTP {response.status_code}): {response.text}")
+        
+    return response.json()
 
 @router.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -67,9 +83,13 @@ async def upload_pdf(file: UploadFile = File(...)):
             
         chunks = split_text(text, chunk_size=500, chunk_overlap=50)
         
-        # Run local embeddings generation via fastembed
-        vectors_gen = embedding_model.embed(chunks)
-        vectors = [v.tolist() for v in vectors_gen]
+        # Embed in batches of 32
+        vectors = []
+        batch_size = 32
+        for i in range(0, len(chunks), batch_size):
+            batch_chunks = chunks[i:i+batch_size]
+            batch_vectors = get_huggingface_embeddings(batch_chunks)
+            vectors.extend(batch_vectors)
             
         qdrant_url = os.getenv("QDRANT_URL")
         qdrant_api_key = os.getenv("QDRANT_API_KEY")
@@ -111,6 +131,8 @@ async def upload_pdf(file: UploadFile = File(...)):
             "doc_id": collection_name
         }
         
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
         
