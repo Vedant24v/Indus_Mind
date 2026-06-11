@@ -34,3 +34,6 @@ __pycache__/
 
 
 .vercel
+
+# FastEmbed Model Cache
+fastembed_cache/

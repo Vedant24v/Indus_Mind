@@ -11,12 +11,9 @@ class QueryRequest(BaseModel):
     question: str
     doc_id: str
 
-# Get the path to fastembed_cache relative to this routes folder
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(current_dir)
-cache_dir = os.path.join(root_dir, "fastembed_cache")
+cache_dir = "/tmp/fastembed_cache"
 
-# Initialize embedding model locally from bundled cache
+# Initialize embedding model locally in Vercel's /tmp directory
 embedding_model = TextEmbedding(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
     cache_dir=cache_dir
