@@ -1,0 +1,13 @@
+# Exclude heavy local folders that are not needed for Vercel cloud build
+.venv
+.venv/
+node_modules
+node_modules/
+.git
+.git/
+fastembed_cache
+fastembed_cache/
+scratch
+scratch/
+.vercel
+.vercel/
