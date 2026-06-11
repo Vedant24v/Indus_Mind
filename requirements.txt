@@ -1,11 +1,7 @@
 fastapi
 uvicorn
 python-multipart
-langchain
-langchain-community
-langchain-groq
-langchain-qdrant
 qdrant-client
 pypdf
-fastembed
+requests
 python-dotenv

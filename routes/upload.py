@@ -1,42 +1,63 @@
 import os
 import re
 import tempfile
+import requests
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain_qdrant import QdrantVectorStore
+from pypdf import PdfReader
 from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
 router = APIRouter()
 
 def sanitize_collection_name(filename: str) -> str:
-    # Extract filename without extension
     name, _ = os.path.splitext(filename)
-    # Convert to lowercase
     name = name.lower()
-    # Remove spaces and special characters (keep only a-z and 0-9)
     sanitized = re.sub(r'[^a-z0-9]', '', name)
     if not sanitized:
         sanitized = "document"
     return sanitized
 
+def split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> list[str]:
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        if end < len(text):
+            space_idx = text.rfind(' ', start, end)
+            if space_idx > start + (chunk_size // 2):
+                end = space_idx
+        chunks.append(text[start:end].strip())
+        start = end - chunk_overlap
+    return chunks
+
+def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
+    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    headers = {}
+    hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
+    if hf_token:
+        headers["Authorization"] = f"Bearer {hf_token}"
+        
+    response = requests.post(
+        api_url,
+        headers=headers,
+        json={"inputs": texts, "options": {"wait_for_model": True}}
+    )
+    if response.status_code != 200:
+        raise Exception(f"HuggingFace embedding failed: {response.text}")
+    return response.json()
+
 @router.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    # Verify file type is PDF
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
     
-    # Restrict file size to 10MB
-    MAX_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_SIZE = 10 * 1024 * 1024
     contents = await file.read(MAX_SIZE + 1)
     if len(contents) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="File size exceeds the 10MB limit.")
     
-    # Reset upload file pointer
     await file.seek(0)
     
-    # Save the upload file to a temporary file
     temp_dir = tempfile.gettempdir()
     temp_file_path = os.path.join(temp_dir, file.filename)
     
@@ -44,46 +65,57 @@ async def upload_pdf(file: UploadFile = File(...)):
         with open(temp_file_path, "wb") as f:
             f.write(contents[:MAX_SIZE])
         
-        # Load and parse document
-        loader = PyPDFLoader(temp_file_path)
-        documents = loader.load()
-        
-        if not documents:
+        reader = PdfReader(temp_file_path)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+            
+        if not text.strip():
             raise HTTPException(status_code=400, detail="No text could be extracted from the PDF file.")
             
-        # Chunk text
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-        chunks = text_splitter.split_documents(documents)
+        chunks = split_text(text, chunk_size=500, chunk_overlap=50)
         
-        # Initialize embeddings using all-MiniLM-L6-v2
-        embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        
-        # Load Qdrant credentials
+        # Hugging Face serverless inference API limits request size.
+        # We should embed in batches of e.g. 32 chunks to avoid size limits or time outs.
+        vectors = []
+        batch_size = 32
+        for i in range(0, len(chunks), batch_size):
+            batch_chunks = chunks[i:i+batch_size]
+            batch_vectors = get_huggingface_embeddings(batch_chunks)
+            vectors.extend(batch_vectors)
+            
         qdrant_url = os.getenv("QDRANT_URL")
         qdrant_api_key = os.getenv("QDRANT_API_KEY")
         
         if not qdrant_url or not qdrant_api_key:
-            raise HTTPException(status_code=500, detail="Qdrant environment variables QDRANT_URL and QDRANT_API_KEY must be set.")
-        
-        # Connect Qdrant Client
+            raise HTTPException(status_code=500, detail="Qdrant environment variables must be set.")
+            
         client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-        
-        # Sanitize collection name
         collection_name = sanitize_collection_name(file.filename)
         
-        # Delete the collection if it exists to overwrite/re-upload clean data
         try:
             client.delete_collection(collection_name)
         except Exception:
             pass
+            
+        client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+        )
         
-        # Create and store vectors in Qdrant
-        QdrantVectorStore.from_documents(
-            documents=chunks,
-            embedding=embeddings,
-            url=qdrant_url,
-            api_key=qdrant_api_key,
-            collection_name=collection_name
+        points = [
+            PointStruct(
+                id=idx,
+                vector=vector,
+                payload={"page_content": chunk, "metadata": {"source": collection_name}}
+            )
+            for idx, (chunk, vector) in enumerate(zip(chunks, vectors))
+        ]
+        
+        client.upsert(
+            collection_name=collection_name,
+            points=points,
+            wait=True
         )
         
         return {
@@ -96,7 +128,6 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
         
     finally:
-        # Clean up temporary file
         if os.path.exists(temp_file_path):
             try:
                 os.remove(temp_file_path)

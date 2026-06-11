@@ -1,9 +1,7 @@
 import os
+import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain_qdrant import QdrantVectorStore
-from langchain_groq import ChatGroq
 from qdrant_client import QdrantClient
 
 router = APIRouter()
@@ -11,6 +9,43 @@ router = APIRouter()
 class QueryRequest(BaseModel):
     question: str
     doc_id: str
+
+def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
+    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    headers = {}
+    hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
+    if hf_token:
+        headers["Authorization"] = f"Bearer {hf_token}"
+        
+    response = requests.post(
+        api_url,
+        headers=headers,
+        json={"inputs": texts, "options": {"wait_for_model": True}}
+    )
+    if response.status_code != 200:
+        raise Exception(f"HuggingFace embedding failed: {response.text}")
+    return response.json()
+
+def call_groq(prompt: str, groq_api_key: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {groq_api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0
+    }
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=payload
+    )
+    if response.status_code != 200:
+        raise Exception(f"Groq API error: {response.text}")
+    return response.json()["choices"][0]["message"]["content"]
 
 @router.post("/api/query")
 async def query_document(request: QueryRequest):
@@ -25,28 +60,31 @@ async def query_document(request: QueryRequest):
         raise HTTPException(status_code=500, detail="Groq environment variable GROQ_API_KEY must be set.")
         
     try:
-        # Connect to Qdrant and check if collection exists
         client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
         try:
             client.get_collection(request.doc_id)
         except Exception:
             raise HTTPException(status_code=404, detail="Document index not found. Please upload the document again.")
         
-        # Load embedding model
-        embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # Get query embedding
+        query_vector = get_huggingface_embeddings([request.question])[0]
         
-        # Load vector store
-        vector_store = QdrantVectorStore(
-            client=client,
+        # Search Qdrant
+        search_result = client.search(
             collection_name=request.doc_id,
-            embedding=embeddings
+            query_vector=query_vector,
+            limit=4
         )
         
-        # Retrieve top 4 relevant chunks
-        docs = vector_store.similarity_search(request.question, k=4)
+        retrieved_texts = [hit.payload["page_content"] for hit in search_result]
         
-        # Build prompt
-        context = "\n\n".join([doc.page_content for doc in docs])
+        if not retrieved_texts:
+            return {
+                "answer": "Not found in document",
+                "sources": []
+            }
+            
+        context = "\n\n".join(retrieved_texts)
         prompt_text = (
             f"You are an industrial document assistant. Use ONLY the following context to answer. "
             f"If the answer is not in the context, say 'Not found in document'.\n\n"
@@ -54,34 +92,11 @@ async def query_document(request: QueryRequest):
             f"Question: {request.question}"
         )
         
-        # Initialize Groq LLM
-        # Fall back to llama-3.1-8b-instant if the decommissioned llama3-8b-8192 is requested
-        try:
-            llm = ChatGroq(
-                temperature=0,
-                model_name="llama3-8b-8192",
-                groq_api_key=groq_api_key
-            )
-            response = llm.invoke(prompt_text)
-        except Exception as e:
-            if "decommissioned" in str(e) or "not found" in str(e).lower() or "400" in str(e):
-                llm = ChatGroq(
-                    temperature=0,
-                    model_name="llama-3.1-8b-instant",
-                    groq_api_key=groq_api_key
-                )
-                response = llm.invoke(prompt_text)
-            else:
-                raise e
-        
-        answer = response.content
-        
-        # Collect source texts
-        sources = [doc.page_content for doc in docs]
+        answer = call_groq(prompt_text, groq_api_key)
         
         return {
             "answer": answer,
-            "sources": sources
+            "sources": retrieved_texts
         }
         
     except HTTPException as he:
