@@ -3,17 +3,12 @@ import re
 import tempfile
 import base64
 import requests
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
 from pypdf import PdfReader
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 router = APIRouter()
-
-class UploadRequest(BaseModel):
-    file_name: str
-    file_data: str  # Base64 encoded string
 
 def sanitize_collection_name(filename: str) -> str:
     name, _ = os.path.splitext(filename)
@@ -61,22 +56,42 @@ def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
     return response.json()
 
 @router.post("/api/upload")
-async def upload_pdf(request: UploadRequest):
-    if not request.file_name.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+async def upload_pdf(request: Request):
+    content_type = request.headers.get("content-type", "")
     
-    try:
-        # Decode base64 contents
-        contents = base64.b64decode(request.file_data)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid base64 file data.")
+    filename = ""
+    contents = b""
+    
+    if "multipart/form-data" in content_type:
+        try:
+            form = await request.form()
+            file = form.get("file")
+            if not file:
+                raise HTTPException(status_code=400, detail="No file found in the multipart form upload.")
+            filename = file.filename
+            contents = await file.read()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse multipart form data: {str(e)}")
+    else:
+        try:
+            body = await request.json()
+            filename = body.get("file_name")
+            file_data = body.get("file_data")
+            if not filename or not file_data:
+                raise HTTPException(status_code=400, detail="JSON payload must contain file_name and file_data.")
+            contents = base64.b64decode(file_data)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse Base64 JSON payload: {str(e)}")
+            
+    if not filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
         
     MAX_SIZE = 10 * 1024 * 1024
     if len(contents) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="File size exceeds the 10MB limit.")
     
     temp_dir = tempfile.gettempdir()
-    temp_file_path = os.path.join(temp_dir, request.file_name)
+    temp_file_path = os.path.join(temp_dir, filename)
     
     try:
         with open(temp_file_path, "wb") as f:
@@ -107,7 +122,7 @@ async def upload_pdf(request: UploadRequest):
             raise HTTPException(status_code=500, detail="Qdrant environment variables must be set.")
             
         client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-        collection_name = sanitize_collection_name(request.file_name)
+        collection_name = sanitize_collection_name(filename)
         
         try:
             client.delete_collection(collection_name)
