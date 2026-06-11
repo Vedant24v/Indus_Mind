@@ -4,7 +4,7 @@ import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
@@ -56,7 +56,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         chunks = text_splitter.split_documents(documents)
         
         # Initialize embeddings using all-MiniLM-L6-v2
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         
         # Load Qdrant credentials
         qdrant_url = os.getenv("QDRANT_URL")

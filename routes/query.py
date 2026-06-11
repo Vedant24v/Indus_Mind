@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from langchain_groq import ChatGroq
 from qdrant_client import QdrantClient
@@ -33,7 +33,7 @@ async def query_document(request: QueryRequest):
             raise HTTPException(status_code=404, detail="Document index not found. Please upload the document again.")
         
         # Load embedding model
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         
         # Load vector store
         vector_store = QdrantVectorStore(
