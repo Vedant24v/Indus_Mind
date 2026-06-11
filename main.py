@@ -1,4 +1,13 @@
 import os
+
+# Limit CPU threads and disable CUDA to prevent PyTorch from causing Out-Of-Memory (OOM) on Render free tier
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
