@@ -36,7 +36,6 @@ export default function RegisterPage() {
         });
       } catch {
         toast.error("Account created but sign-in failed. Please log in manually.");
-        window.location.href = "/login";
       }
     },
     onError: (error) => {

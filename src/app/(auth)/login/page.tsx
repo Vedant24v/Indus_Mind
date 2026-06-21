@@ -28,7 +28,7 @@ function LoginForm() {
   useEffect(() => {
     if (error) {
       if (error === "CredentialsSignin") {
-        toast.error("Invalid email or password. Please try again.");
+        toast.error("Invalid email or password.");
       } else {
         toast.error("An error occurred during authentication. Please try again.");
       }
