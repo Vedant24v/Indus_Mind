@@ -20,7 +20,10 @@ export default function ProjectDetailPage({
 }: {
   params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = use(params);
+  const resolvedParams = params && typeof (params as any).then === "function"
+    ? use(params)
+    : (params as any);
+  const projectId = resolvedParams.projectId;
   const router = useRouter();
   const utils = trpc.useUtils();
 

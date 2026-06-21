@@ -30,7 +30,10 @@ export default function ChatPage({
 }: {
   params: Promise<{ projectId: string; sessionId: string }>;
 }) {
-  const { projectId, sessionId } = use(params);
+  const resolvedParams = params && typeof (params as any).then === "function"
+    ? use(params)
+    : (params as any);
+  const { projectId, sessionId } = resolvedParams;
   const [input, setInput] = useState("");
   const [expandedSources, setExpandedSources] = useState<
     Record<string, boolean>
