@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, LogIn } from "lucide-react";
 import { toast } from "sonner";
@@ -17,32 +18,35 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function LoginPage() {
+function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
+  useEffect(() => {
+    if (error) {
+      if (error === "CredentialsSignin") {
+        toast.error("Invalid email or password. Please try again.");
+      } else {
+        toast.error("An error occurred during authentication. Please try again.");
+      }
+    }
+  }, [error]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirectTo: "/dashboard",
       });
-
-      if (result?.error) {
-        toast.error("Invalid email or password. Please try again.");
-        return;
-      }
-
-      toast.success("Welcome back!");
-      window.location.href = "/dashboard";
     } catch {
       toast.error("Something went wrong. Please try again later.");
-    } finally {
       setIsLoading(false);
     }
   }
@@ -113,5 +117,17 @@ export default function LoginPage() {
         </CardFooter>
       </form>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Card className="glass glow-amber min-h-[300px] flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </Card>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

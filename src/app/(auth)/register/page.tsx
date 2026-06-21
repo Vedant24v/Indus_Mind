@@ -28,19 +28,16 @@ export default function RegisterPage() {
     onSuccess: async () => {
       toast.success("Account created! Signing you in…");
 
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
+      try {
+        await signIn("credentials", {
+          email,
+          password,
+          redirectTo: "/dashboard",
+        });
+      } catch {
         toast.error("Account created but sign-in failed. Please log in manually.");
         window.location.href = "/login";
-        return;
       }
-
-      window.location.href = "/dashboard";
     },
     onError: (error) => {
       if (error.data?.code === "CONFLICT") {
