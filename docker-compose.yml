@@ -1,0 +1,43 @@
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      - PYTHON_SERVICE_URL=http://python-service:8000
+      - DATABASE_URL=postgresql://indusmind:indusmind_dev@postgres:5432/indusmind
+    depends_on:
+      postgres:
+        condition: service_healthy
+      python-service:
+        condition: service_started
+
+  python-service:
+    build:
+      context: .
+      dockerfile: services/python/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: indusmind
+      POSTGRES_PASSWORD: indusmind_dev
+      POSTGRES_DB: indusmind
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indusmind"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

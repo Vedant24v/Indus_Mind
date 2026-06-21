@@ -1,27 +1,12 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Dependencies
+node_modules/
 
-node_modules
-dist
-dist-ssr
-*.local
+# Next.js
+.next/
+out/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Build output
+dist/
 
 # Python
 .venv/
@@ -30,10 +15,48 @@ __pycache__/
 
 # Environment files
 .env
+.env.local
 .env.production
+.env.*.local
 
+# Editor
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-.vercel
+# Vercel
+.vercel/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
 
 # FastEmbed Model Cache
 fastembed_cache/
+
+# MCP server build
+mcp-server/dist/
+mcp-server/node_modules/
+
+# Docker volumes
+pgdata/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+.vercel
+
+# Qdrant local database
+local_qdrant.db/
+local_qdrant/

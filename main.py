@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 # Load env variables
 load_dotenv()
 
-app = FastAPI(title="RAG Industrial Document Q&A API")
+app = FastAPI(title="IndusMind AEC RAG Service")
 
 # Configure CORS
 origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
@@ -37,11 +37,12 @@ app.add_middleware(
 )
 
 # Import and include routers
-from routes import upload, query
+from routes import upload, query, documents
 app.include_router(upload.router)
 app.include_router(query.router)
+app.include_router(documents.router)
 
-@app.get("/health")
+@app.get("/api/py/health")
 def health_check():
     return {"status": "ok"}
 

@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "api/index.py" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/api/py/(.*)", "destination": "/api/index.py" },
+    { "source": "/((?!api|_next).*)", "destination": "/" }
   ]
 }

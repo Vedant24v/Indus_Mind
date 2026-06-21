@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+__pycache__
+node_modules
+.next
+.vercel
+mcp-server/node_modules
+mcp-server/dist
+*.md
+*.log
+.env*
+!.env.example
