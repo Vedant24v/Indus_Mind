@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +19,6 @@ import {
 } from "@/components/ui/card";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,12 +36,11 @@ export default function RegisterPage() {
 
       if (result?.error) {
         toast.error("Account created but sign-in failed. Please log in manually.");
-        router.push("/login");
+        window.location.href = "/login";
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     },
     onError: (error) => {
       if (error.data?.code === "CONFLICT") {
