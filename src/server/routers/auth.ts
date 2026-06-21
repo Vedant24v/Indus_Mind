@@ -16,8 +16,10 @@ export const authRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = input.email.trim().toLowerCase();
+
       const existingUser = await ctx.prisma.user.findUnique({
-        where: { email: input.email },
+        where: { email },
       });
 
       if (existingUser) {
@@ -32,7 +34,7 @@ export const authRouter = router({
       const user = await ctx.prisma.user.create({
         data: {
           name: input.name,
-          email: input.email,
+          email,
           hashedPassword,
         },
         select: {

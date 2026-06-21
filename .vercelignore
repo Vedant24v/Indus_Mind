@@ -1,4 +1,9 @@
 # Exclude heavy local folders that are not needed for Vercel cloud build
+.env
+.env.local
+.env.production
+.env.*.local
+.env.vercel*
 .venv
 .venv/
 node_modules

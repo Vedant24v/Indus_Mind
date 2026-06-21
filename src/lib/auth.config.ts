@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -13,14 +14,11 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const { pathname } = nextUrl;
 
-      console.log(`[Auth Middleware] path: ${pathname}, isLoggedIn: ${isLoggedIn}`);
-
       const isProtectedRoute =
         pathname.startsWith("/dashboard") || pathname.startsWith("/projects");
 
       if (isProtectedRoute) {
         if (isLoggedIn) return true;
-        console.log(`[Auth Middleware] Redirecting to login because not logged in for path: ${pathname}`);
         return false; // Redirect unauthenticated users to login page
       }
 
@@ -28,7 +26,6 @@ export const authConfig = {
         pathname.startsWith("/login") || pathname.startsWith("/register");
 
       if (isAuthRoute && isLoggedIn) {
-        console.log(`[Auth Middleware] Redirecting to dashboard because already logged in for path: ${pathname}`);
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
 
