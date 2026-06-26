@@ -1,5 +1,24 @@
-const PYTHON_SERVICE_URL =
-  process.env.PYTHON_SERVICE_URL ?? "http://localhost:8000";
+import { getPythonServiceUrl } from "@/lib/python-service-url";
+
+async function pythonFetch(
+  path: string,
+  init?: RequestInit
+): Promise<Response> {
+  const baseUrl = getPythonServiceUrl();
+  const url = `${baseUrl}${path}`;
+
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    const reason =
+      error instanceof Error ? error.message : "Unknown network error";
+    throw new Error(
+      `Cannot reach Python RAG service at ${url}: ${reason}. ` +
+        "Ensure PYTHON_SERVICE_URL is set (local: http://localhost:8000) " +
+        "and the Python service is running."
+    );
+  }
+}
 
 interface UploadResponse {
   message: string;
@@ -26,7 +45,7 @@ export async function uploadToPythonService(
 ): Promise<UploadResponse> {
   const base64Data = fileBuffer.toString("base64");
 
-  const response = await fetch(`${PYTHON_SERVICE_URL}/api/py/upload`, {
+  const response = await pythonFetch("/api/py/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -63,7 +82,7 @@ export async function queryPythonService(
     body.document_ids = documentIds;
   }
 
-  const response = await fetch(`${PYTHON_SERVICE_URL}/api/py/query`, {
+  const response = await pythonFetch("/api/py/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -85,8 +104,8 @@ export async function deleteDocumentVectors(
   projectId: string,
   documentId: string
 ): Promise<void> {
-  const response = await fetch(
-    `${PYTHON_SERVICE_URL}/api/py/documents/${projectId}/${documentId}`,
+  const response = await pythonFetch(
+    `/api/py/documents/${projectId}/${documentId}`,
     { method: "DELETE" }
   );
 
@@ -104,8 +123,8 @@ export async function deleteDocumentVectors(
 export async function deleteProjectCollection(
   projectId: string
 ): Promise<void> {
-  const response = await fetch(
-    `${PYTHON_SERVICE_URL}/api/py/collections/${projectId}`,
+  const response = await pythonFetch(
+    `/api/py/collections/${projectId}`,
     { method: "DELETE" }
   );
 

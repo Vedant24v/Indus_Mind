@@ -10,6 +10,21 @@ HF_API_URL = (
 )
 
 
+def _mean_pool(token_embeddings: list) -> list[float]:
+    """Mean-pool token-level embeddings into a single sentence vector."""
+    if not token_embeddings:
+        return []
+    if isinstance(token_embeddings[0], (int, float)):
+        return token_embeddings
+    dim = len(token_embeddings[0])
+    summed = [0.0] * dim
+    for token_vec in token_embeddings:
+        for i, val in enumerate(token_vec):
+            summed[i] += val
+    count = len(token_embeddings)
+    return [v / count for v in summed]
+
+
 def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
     hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
     if not hf_token:
@@ -32,4 +47,11 @@ def get_huggingface_embeddings(texts: list[str]) -> list[list[float]]:
             detail=f"HuggingFace embedding failed (HTTP {response.status_code}): {response.text}",
         )
 
-    return response.json()
+    raw = response.json()
+    if not isinstance(raw, list):
+        raise HTTPException(
+            status_code=502,
+            detail="Unexpected HuggingFace response format.",
+        )
+
+    return [_mean_pool(item) for item in raw]

@@ -5,3 +5,4 @@ qdrant-client
 pypdf
 requests
 python-dotenv
+pydantic

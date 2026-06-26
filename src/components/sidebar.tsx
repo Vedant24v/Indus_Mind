@@ -17,8 +17,11 @@ import { trpc } from "@/lib/trpc";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const projectsQuery = trpc.project.list.useQuery();
+  const { data: session, status } = useSession();
+  const projectsQuery = trpc.project.list.useQuery(undefined, {
+    enabled: status === "authenticated",
+    refetchOnMount: "always",
+  });
 
   const navItems = [
     {
@@ -114,7 +117,15 @@ export function Sidebar() {
             );
           })}
 
-          {projectsQuery.data?.length === 0 && (
+          {projectsQuery.isError && (
+            <p className="text-xs text-destructive px-3 py-2">
+              Failed to load projects
+            </p>
+          )}
+
+          {!projectsQuery.isLoading &&
+            !projectsQuery.isError &&
+            projectsQuery.data?.length === 0 && (
             <p className="text-xs text-muted-foreground px-3 py-2">
               No projects yet
             </p>

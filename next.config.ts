@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   async rewrites() {
+    // On Vercel, Python runs as a serverless function via api/index.py + vercel.json.
+    // Only proxy to an external Python service during local development.
+    if (process.env.VERCEL) {
+      return [];
+    }
+
     const pythonServiceUrl =
       process.env.PYTHON_SERVICE_URL ?? "http://localhost:8000";
     return [

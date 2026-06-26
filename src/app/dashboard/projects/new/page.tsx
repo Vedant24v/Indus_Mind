@@ -9,12 +9,14 @@ import { toast } from "sonner";
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   const createProject = trpc.project.create.useMutation({
     onSuccess: (project) => {
       toast.success("Project created successfully");
+      utils.project.list.invalidate();
       router.push(`/dashboard/projects/${project.id}`);
     },
     onError: (error) => {
