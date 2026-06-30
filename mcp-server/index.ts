@@ -2,8 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const PYTHON_SERVICE_URL =
-  process.env.PYTHON_SERVICE_URL ?? "http://localhost:8000";
+const APP_URL = process.env.INDUSMIND_URL ?? "http://localhost:3000";
 
 interface QuerySource {
   document_name: string;
@@ -40,7 +39,7 @@ server.tool(
   },
   async ({ projectId, query }) => {
     try {
-      const response = await fetch(`${PYTHON_SERVICE_URL}/api/py/query`, {
+      const response = await fetch(`${APP_URL}/api/py/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,7 +103,7 @@ server.tool(
   },
   async ({ projectId, documentId }) => {
     try {
-      const response = await fetch(`${PYTHON_SERVICE_URL}/api/py/query`, {
+      const response = await fetch(`${APP_URL}/api/py/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

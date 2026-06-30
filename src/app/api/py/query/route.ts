@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryPythonService } from "@/lib/rag-service";
+import { queryRagService } from "@/lib/rag-service";
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await queryPythonService(projectId, question, documentIds);
+    const result = await queryRagService(projectId, question, documentIds);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Query failed";

@@ -2,9 +2,9 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
 import {
-  uploadToPythonService,
+  uploadToRagApi,
   deleteDocumentVectors,
-} from "../python-service";
+} from "../rag-api-service";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -69,8 +69,8 @@ export const documentRouter = router({
 
       try {
         const fileBuffer = Buffer.from(input.fileData, "base64");
-        console.log(`Uploading document ${document.id} to Python service...`);
-        const result = await uploadToPythonService(
+        console.log(`Uploading document ${document.id} to the RAG API...`);
+        const result = await uploadToRagApi(
           fileBuffer,
           input.fileName,
           input.projectId,

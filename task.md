@@ -19,13 +19,13 @@
 - [x] tRPC API route handler
 - [x] tRPC React client + provider
 
-## Phase 3: Python Service Refactoring
+## Phase 3: RAG Service Refactoring
 - [x] Update routes to /api/py/ prefix
 - [x] Refactor upload.py for project-scoped collections
 - [x] Refactor query.py for project-scoped queries with AEC prompt
 - [x] Add document deletion endpoint
 - [x] Add collection deletion endpoint
-- [x] Update main.py and api/index.py
+- [x] Remove old external service entry points
 
 ## Phase 4: Next.js Frontend
 - [x] Root layout with providers
@@ -43,7 +43,7 @@
 
 ## Phase 5: Docker & Containerization
 - [x] Next.js Dockerfile (multi-stage)
-- [x] Python service Dockerfile
+- [x] Old service Dockerfile cleanup
 - [x] docker-compose.yml with Postgres
 
 ## Phase 6: MCP Server

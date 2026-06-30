@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadToPythonService } from "@/lib/rag-service";
+import { uploadToRagService } from "@/lib/rag-service";
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const fileBuffer = Buffer.from(fileData, "base64");
-    const result = await uploadToPythonService(fileBuffer, fileName, projectId, documentId);
+    const result = await uploadToRagService(fileBuffer, fileName, projectId, documentId);
 
     return NextResponse.json(result);
   } catch (error) {

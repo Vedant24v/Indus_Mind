@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { queryPythonService } from "../python-service";
+import { queryRagApi } from "../rag-api-service";
 
 export const chatRouter = router({
   listSessions: protectedProcedure
@@ -168,8 +168,8 @@ export const chatRouter = router({
       });
 
       try {
-        // Query the Python RAG service
-        const ragResponse = await queryPythonService(
+        // Query the internal RAG API
+        const ragResponse = await queryRagApi(
           session.project.id,
           input.content
         );

@@ -35,7 +35,7 @@ interface QueryResponse {
   sources: QuerySource[];
 }
 
-export async function uploadToPythonService(
+export async function uploadToRagApi(
   fileBuffer: Buffer,
   fileName: string,
   projectId: string,
@@ -59,14 +59,14 @@ export async function uploadToPythonService(
       detail?: string;
     } | null;
     throw new Error(
-      errorData?.detail ?? `Python service upload failed (HTTP ${response.status})`
+      errorData?.detail ?? `RAG upload failed (HTTP ${response.status})`
     );
   }
 
   return response.json() as Promise<UploadResponse>;
 }
 
-export async function queryPythonService(
+export async function queryRagApi(
   projectId: string,
   question: string,
   documentIds?: string[]
@@ -91,7 +91,7 @@ export async function queryPythonService(
       detail?: string;
     } | null;
     throw new Error(
-      errorData?.detail ?? `Python service query failed (HTTP ${response.status})`
+      errorData?.detail ?? `RAG query failed (HTTP ${response.status})`
     );
   }
 

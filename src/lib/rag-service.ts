@@ -203,7 +203,7 @@ export interface QueryResponse {
   sources: QuerySource[];
 }
 
-export async function uploadToPythonService(
+export async function uploadToRagService(
   fileBuffer: Buffer,
   fileName: string,
   projectId: string,
@@ -264,7 +264,7 @@ export async function uploadToPythonService(
   };
 }
 
-export async function queryPythonService(
+export async function queryRagService(
   projectId: string,
   question: string,
   documentIds?: string[]

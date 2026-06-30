@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { deleteProjectCollection } from "../python-service";
+import { deleteProjectCollection } from "../rag-api-service";
 
 export const projectRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
