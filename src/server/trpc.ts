@@ -32,11 +32,36 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 
+  let userId = ctx.session.user.id;
+
+  if (!userId && ctx.session.user.email) {
+    const user = await ctx.prisma.user.findUnique({
+      where: { email: ctx.session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Authenticated user could not be resolved.",
+      });
+    }
+
+    userId = user.id;
+  }
+
+  if (!userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authenticated user could not be resolved.",
+    });
+  }
+
   return next({
     ctx: {
       ...ctx,
       session: ctx.session,
-      userId: ctx.session.user.id,
+      userId,
     },
   });
 });

@@ -69,14 +69,13 @@ export const documentRouter = router({
 
       try {
         const fileBuffer = Buffer.from(input.fileData, "base64");
-
+        console.log(`Uploading document ${document.id} to Python service...`);
         const result = await uploadToPythonService(
           fileBuffer,
           input.fileName,
           input.projectId,
           document.id
         );
-
         const updatedDocument = await ctx.prisma.document.update({
           where: { id: document.id },
           data: {

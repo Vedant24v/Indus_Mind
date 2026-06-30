@@ -1,22 +1,20 @@
-import { getPythonServiceUrl } from "@/lib/python-service-url";
+import { headers } from "next/headers";
 
-async function pythonFetch(
+async function nextApiFetch(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
-  const baseUrl = getPythonServiceUrl();
-  const url = `${baseUrl}${path}`;
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const url = `${protocol}://${host}${path}`;
 
   try {
     return await fetch(url, init);
   } catch (error) {
     const reason =
       error instanceof Error ? error.message : "Unknown network error";
-    throw new Error(
-      `Cannot reach Python RAG service at ${url}: ${reason}. ` +
-        "Ensure PYTHON_SERVICE_URL is set (local: http://localhost:8000) " +
-        "and the Python service is running."
-    );
+    throw new Error(`Cannot reach Next.js RAG API at ${url}: ${reason}.`);
   }
 }
 
@@ -45,7 +43,7 @@ export async function uploadToPythonService(
 ): Promise<UploadResponse> {
   const base64Data = fileBuffer.toString("base64");
 
-  const response = await pythonFetch("/api/py/upload", {
+  const response = await nextApiFetch("/api/py/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -82,7 +80,7 @@ export async function queryPythonService(
     body.document_ids = documentIds;
   }
 
-  const response = await pythonFetch("/api/py/query", {
+  const response = await nextApiFetch("/api/py/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -104,7 +102,7 @@ export async function deleteDocumentVectors(
   projectId: string,
   documentId: string
 ): Promise<void> {
-  const response = await pythonFetch(
+  const response = await nextApiFetch(
     `/api/py/documents/${projectId}/${documentId}`,
     { method: "DELETE" }
   );
@@ -123,7 +121,7 @@ export async function deleteDocumentVectors(
 export async function deleteProjectCollection(
   projectId: string
 ): Promise<void> {
-  const response = await pythonFetch(
+  const response = await nextApiFetch(
     `/api/py/collections/${projectId}`,
     { method: "DELETE" }
   );

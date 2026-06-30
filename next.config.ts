@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas"],
   async rewrites() {
     // On Vercel, Python runs as a serverless function via api/index.py + vercel.json.
     // Only proxy to an external Python service during local development.

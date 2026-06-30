@@ -6,15 +6,11 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "lint": "next lint"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
+    "@qdrant/js-client-rest": "^1.18.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "@tanstack/react-query": "^5.80.0",
     "@trpc/client": "^11.3.0",
@@ -28,6 +24,7 @@
     "lucide-react": "^1.17.0",
     "next": "^15.3.3",
     "next-auth": "^5.0.0-beta.25",
+    "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.8",
